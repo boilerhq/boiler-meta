@@ -11,7 +11,7 @@ guarantees over a runtime.
 - Title: Boiler Architecture Specification
 - Author: Pavel Mikheev (altsignum)
 - License: Creative Commons Attribution 4.0 International (CC BY 4.0)
-- Version: 0.9.0
+- Version: 0.9.3
 - Status: Stable
 - Last Updated: 2026-02-01
 - Canonical Source: https://github.com/boilerhq/boiler-meta
@@ -78,6 +78,7 @@ The following concerns are not part of the document:
 - [Terminology](#terminology)
 - [Contracts](#contracts)
   - [Module Contract](#module-contract)
+  - [Module Configuration Contract](#module-configuration-contract)
   - [Runtime Contract](#runtime-contract)
   - [Version Contract](#version-contract)
   - [Version Criterion Contract](#version-criterion-contract)
@@ -136,6 +137,49 @@ Rationale:
   containment to reflect the two fundamental ways in which real systems are
   structured: logical coupling between components and structural grouping within
   a Repository.
+
+## Module Configuration Contract
+
+Invariants:
+
+- A Module Configuration MUST declare the set of Platforms targeted by the
+  Module.
+- A Module Configuration MUST declare all Predicates required to satisfy all
+  Guarantees of the Module.
+- For each declared Predicate, the Module Configuration MAY specify a Version
+  if the Guarantee is versioned.
+- For each declared Predicate, the Module Configuration MAY specify
+  configurable properties. If configurable properties are not specified,
+  default values defined by the corresponding Predicate MUST be used.
+- A Module Configuration MAY declare dependencies on other Modules by
+  referencing their identifiers.
+- Declared Module dependencies MUST NOT contradict structural dependencies
+  implied by directory containment.
+
+Rationale:
+
+- Guarantees are not declared explicitly at the Module level. Instead, the set
+  of Guarantees provided by a Module is defined implicitly through the set of
+  declared Predicates. Since each Predicate represents exactly one Guarantee,
+  declaring a Predicate is equivalent to declaring the corresponding Guarantee.
+  This approach preserves a single source of truth for Guarantees while avoiding
+  duplication between semantic and operational layers. The Predicate serves as
+  both the declaration of the Guarantee and its realization contract.
+- All Guarantees of a Module are considered to apply to all Platforms targeted
+  by the Module. This association is derived from the combination of declared
+  Platforms and declared Predicates, forming the Cartesian product of
+  Guarantees and Platforms without requiring explicit enumeration.
+- Declaring Predicates instead of Guarantees ensures that every required
+  Guarantee is accompanied by a concrete mechanism for its verification and
+  establishment, preventing incomplete or non-realizable specifications.
+- Version and configurable properties are specified at the point of Predicate
+  declaration to ensure that each Guarantee is evaluated with a fully defined
+  variation and parameter set, avoiding ambiguity in dependency resolution and
+  evaluation.
+- Module-level dependencies are declared independently of structural
+  containment to allow explicit expression of logical relationships that are
+  not implied by directory hierarchy, while still preserving consistency with
+  structural dependencies.
 
 ## Runtime Contract
 
@@ -332,6 +376,8 @@ Invariants:
 - A Predicate MAY declare a Variant of itself; if a Predicate does not declare a
   Variant, it MUST be interpreted as the canonical Variant.
 - All Variants of a Predicate MUST represent the same Guarantee.
+- All Predicates representing the same Guarantee MUST declare the same set of
+  configurable properties with identical semantics and default values.
 - A Predicate MUST declare whether its Guarantee is unversioned or versioned.
 - A Predicate MUST declare configurable properties of its Guarantee and their
   default values.
@@ -340,11 +386,14 @@ Invariants:
 - A Predicate MUST declare a maximum supported Version of the target Platform.
 - A Predicate MUST NOT be applicable outside its declared target Platform and
   Version range.
-- A Predicate MAY declare dependencies on other Predicates by referencing their
+- A Predicate MAY declare dependencies on other Guarantees by referencing their
   identifiers.
+- For each dependency, if the referenced Guarantee is versioned,
+  a Version MUST be specified. Configurable properties MAY be specified; if not,
+  default values MUST be used.
 - A Predicate MUST NOT rely on undeclared dependencies.
 - A Predicate MUST be applicable only when all of its declared dependencies are
-  applicable.
+  satisfied in the same Runtime state and Context.
 - A Predicate MUST expose exactly one operation for each defined Context.
 - A Predicate MUST expose a Check operation.
 - A Predicate MUST expose a Version Resolution operation if its Guarantee is
@@ -369,10 +418,12 @@ Context Operations:
 - A Context operation MUST NOT accept Version if the Guarantee is unversioned.
 - A Context operation MAY accept configurable properties declared by the
   Predicate.
-- A Context operation MUST result in a Runtime state in which the Guarantee is
-  satisfied.
+- A Context operation MUST be applicable only when all of the Predicate's
+  declared dependencies are satisfied in the same Runtime state and Context.
 - A Context operation MUST rely on the same observation criteria as the Check
   operation to determine whether the Guarantee is satisfied.
+- A Context operation MUST result in a Runtime state in which the Guarantee is
+  satisfied.
 - Reapplying the same Context operation with the same inputs MUST NOT change the
   targeted result.
 
