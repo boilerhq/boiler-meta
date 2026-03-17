@@ -11,15 +11,16 @@ guarantees over a runtime.
 - Title: Boiler Architecture Specification
 - Author: Pavel Mikheev (altsignum)
 - License: Creative Commons Attribution 4.0 International (CC BY 4.0)
-- Version: 0.8.9
+- Version: 0.9.0
 - Status: Stable
 - Last Updated: 2026-02-01
 - Canonical Source: https://github.com/boilerhq/boiler-meta
 
 ## Goals
 
-The system exists to provide a contract layer that guarantees reproducible and composable properties of development and
-execution runtimes across heterogeneous toolchains.
+The system exists to provide a contract layer that guarantees reproducible and
+composable properties of development and execution runtimes across heterogeneous
+toolchains.
 
 It solves the following class of problems:
 
@@ -75,9 +76,6 @@ The following concerns are not part of the document:
   - [Design Goals](#design-goals)
   - [Table of Contents](#table-of-contents)
 - [Terminology](#terminology)
-- [Canonical References](#canonical-references)
-  - [Reference Implementation](#reference-implementation)
-  - [Identity Markers](#identity-markers)
 - [Contracts](#contracts)
   - [Module Contract](#module-contract)
   - [Runtime Contract](#runtime-contract)
@@ -85,7 +83,6 @@ The following concerns are not part of the document:
   - [Version Criterion Contract](#version-criterion-contract)
   - [Platform Contract](#platform-contract)
   - [Context Contract](#context-contract)
-  - [Filesystem Layout Contract](#filesystem-layout-contract)
   - [Activation Contract](#activation-contract)
   - [Guarantee Contract](#guarantee-contract)
   - [Predicate Contract](#predicate-contract)
@@ -97,55 +94,21 @@ The following concerns are not part of the document:
 - **Repository**: A versioned collection of files and directories treated by the
   system as a single unit of operation.
 - **Module**: A directory recognized by the system as a functional unit.
+- **Module Configuration**: A Boiler-specific configuration that declares the
+  properties of a Module.
 - **Runtime**: An execution environment in which the system operates.
 - **Version**: A selector of a variation of a referenced entity.
 - **Version Criterion**: A selector that expresses an intent to choose a Version
   for a referenced entity.
-- **Platform**: an element of a Runtime classification system.
+- **Platform**: An element of a Runtime classification system.
 - **Context**: A selector that expresses how a Runtime is considered.
-- **Filesystem Layout**: The structural organization of directories within a
-  Repository.
 - **Boiler Root**: A dedicated directory located at the Repository root,
   reserved for Boiler use.
-- **Module Discovery Root**: A directory that defines a search root for Modules.
 - **Activation**: An operation that establishes that the Implementation is
   executable for the Repository.
 - **Guarantee**: A necessary condition that a Runtime must satisfy.
 - **Predicate**: An operational contract that provides and verifies a single
   Guarantee over a Runtime.
-
-# Canonical References
-
-The following decisions give concrete form to the canonical realization, without
-introducing additional requirements beyond the contracts.
-
-## Reference Implementation
-
-This reference implementation is non-normative and does not introduce additional
-requirements beyond the contracts.
-
-The reference realization is expressed in GNU Bash compatible with version 4.4.
-
-Rationale:
-
-- Bash is treated as a widely available, well-understood baseline for
-  repository-local automation. It supports minimal prerequisites,
-  self-containment, and transparency.
-- Bash 4.4 is selected as the minimal baseline that provides a stable and
-  sufficiently expressive feature set (including associative arrays, reliable
-  error handling, and consistent behavior across platforms), without depending
-  on newer, less universally available language revisions.
-- Bash 4.4 or a compatible version is widely available in contemporary operating
-  system ecosystems targeted by typical Runtime realizations, either as a
-  preinstalled component or as a trivially installable system package, without
-  introducing additional language runtimes or external toolchains.
-- Fixing a concrete baseline version establishes a deterministic interpretive
-  reference for examples, tests, and reference behavior.
-
-## Identity Markers
-
-- **Boiler Root Directory Name**: `.boiler`
-- **Module Configuration Directory Name**: `.boiler.m`
 
 # Contracts
 
@@ -154,9 +117,8 @@ Rationale:
 Invariants:
 
 - A Module MUST be a distinct Repository entity that exists as a directory.
-- A directory qualifies as a Module only if it contains a dedicated
-  configuration directory named
-  `<Module Configuration Directory Name>`.
+- A directory qualifies as a Module only if it contains a Module Configuration
+  at a root.
 - Module composition MAY be expressed by dependency relations between Modules.
 - Module composition MAY be expressed by containment relations through directory
   nesting.
@@ -305,43 +267,6 @@ Rationale:
   services or end-user execution). These variations do not introduce additional
   Contexts, but are realizations of the same two interpretations.
 
-## Filesystem Layout Contract
-
-Invariants:
-
-- The Filesystem Layout MUST be defined relative to the Repository root.
-- The Repository MUST contain a Boiler Root located at the Repository root.
-- The system recognizes the following directory roles within a Repository:
-  - Boiler Root
-  - Module Discovery Roots
-- The Boiler Root MUST be represented by exactly one directory and MUST NOT be
-  configurable.
-- Module Discovery Roots MAY be represented by one or more directories and MAY
-  be configurable.
-- If a configurable directory role is used by the Repository and no explicit
-  configuration is provided, the canonical baseline MUST be used.
-
-Definitions:
-
-- Boiler Root: intended to serve as a reserved namespace for system-owned state
-  and configuration.
-- Module Discovery Root: intended to define the search roots for Modules
-  maintained within the Repository.
-
-Canonical baseline:
-
-- `<Boiler Root Directory Name>/` — Boiler Root
-- `src/` — primary Module Discovery Root
-
-Rationale:
-
-- The canonical layout is based on widely recognized Repository structure
-  conventions.
-- Canonical defaults provide a predictable baseline while allowing explicit
-  deviation when required.
-- The system promotes consistent Repository structure without enforcing it
-  rigidly.
-
 ## Activation Contract
 
 Invariants:
@@ -368,13 +293,14 @@ Rationale:
 Invariants:
 
 - A Guarantee MUST represent a necessary property of Runtime state.
-- A Guarantee MUST be a declarative assertion over Runtime state.
 - A Guarantee MUST have an identifier.
 - The same Guarantee identifier MUST always denote the same asserted property.
 - A Guarantee MUST be verifiable by observing Runtime state.
 - For any Runtime instance within scope, a Guarantee MUST evaluate to either
   satisfied or violated.
 - A Guarantee MUST describe required properties, not a complete Runtime state.
+- A Guarantee MAY define additional configurable properties. Such properties
+  MUST NOT be required; a Guarantee MUST be achievable in their absence.
 - A Guarantee MAY be subject to Version selection.
 - A Guarantee MUST be either unversioned or versioned.
 - An unversioned Guarantee MUST be evaluable without Version.
@@ -405,9 +331,10 @@ Invariants:
   Guarantee.
 - A Predicate MAY declare a Variant of itself; if a Predicate does not declare a
   Variant, it MUST be interpreted as the canonical Variant.
-- All Variants of a Predicate MUST represent the same asserted property of the
-  Guarantee.
+- All Variants of a Predicate MUST represent the same Guarantee.
 - A Predicate MUST declare whether its Guarantee is unversioned or versioned.
+- A Predicate MUST declare configurable properties of its Guarantee and their
+  default values.
 - A Predicate MUST declare exactly one target Platform.
 - A Predicate MUST declare a minimum supported Version of the target Platform.
 - A Predicate MUST declare a maximum supported Version of the target Platform.
@@ -423,17 +350,6 @@ Invariants:
 - A Predicate MUST expose a Version Resolution operation if its Guarantee is
   versioned.
 
-Context Operations:
-
-- A Context operation MUST accept Version if the Guarantee is versioned.
-- A Context operation MUST NOT accept Version if the Guarantee is unversioned.
-- A Context operation MUST target a Runtime state where the Guarantee evaluates
-  to satisfied.
-- A Context operation MUST rely on the same observation criteria as the Check
-  operation to determine whether the Guarantee is satisfied.
-- Reapplying the same Context operation with the same inputs MUST NOT change the
-  targeted result.
-
 Check Operation:
 
 - A Check operation MUST evaluate the Guarantee for a given Runtime instance.
@@ -441,8 +357,24 @@ Check Operation:
 - A Check operation MUST have no side effects.
 - A Check operation MUST accept Version if the Guarantee is versioned.
 - A Check operation MUST NOT accept Version if the Guarantee is unversioned.
+- A Check operation MAY accept configurable properties declared by the
+  Predicate.
 - For a versioned Guarantee, a Check operation MUST treat the provided Version
-  as selecting exactly one variation.
+  as selecting exactly one variation and MUST evaluate configurable properties
+  using values provided or default values defined by the Predicate.
+
+Context Operations:
+
+- A Context operation MUST accept Version if the Guarantee is versioned.
+- A Context operation MUST NOT accept Version if the Guarantee is unversioned.
+- A Context operation MAY accept configurable properties declared by the
+  Predicate.
+- A Context operation MUST result in a Runtime state in which the Guarantee is
+  satisfied.
+- A Context operation MUST rely on the same observation criteria as the Check
+  operation to determine whether the Guarantee is satisfied.
+- Reapplying the same Context operation with the same inputs MUST NOT change the
+  targeted result.
 
 Version Resolution Operation:
 
